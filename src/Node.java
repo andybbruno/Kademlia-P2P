@@ -11,7 +11,7 @@ public class Node {
 	private int id;
 	private String IP;
 	private int port;
-	private String[][] DHT;
+	int[][] DHT = new int[Main.bit][Main.kbuckets];
 
 	Node(int id) throws NoSuchAlgorithmException {
 		this.IP = generateIP();
@@ -47,7 +47,7 @@ public class Node {
 
 	public String toString() {
 		String bin_ID = String.format("%" + Main.bit + "s", Integer.toBinaryString(this.id)).replace(' ', '0');
-		return "<" + bin_ID + "," + this.IP + ":" + this.port + ">";
+		return "<" + this.id + "," + bin_ID + "," + this.IP + ":" + this.port + ">";
 
 	}
 

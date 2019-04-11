@@ -31,12 +31,12 @@ public class Main {
 			for (Node n : nodes) {
 				System.out.println(n.toString());
 			}
-			
-			int xor = nodes.get(0).getID() ^ nodes.get(1).getID();
-			System.out.println(String.format("%" + Main.bit + "s", Integer.toBinaryString(xor)).replace(' ', '0'));
 
 			// the first one is the bootstrap
 			kad.addBooststrap(nodes.pop());
+
+			// the others are common nodes
+			kad.join(nodes.pop());
 
 			// the others are common nodes
 			kad.join(nodes.pop());
