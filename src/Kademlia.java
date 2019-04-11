@@ -19,6 +19,7 @@ public class Kademlia {
 	public void addBooststrap(Node node) throws Exception {
 		if (bootstrap == null) {
 			this.bootstrap = node;
+			join(node);
 		} else {
 			throw new Exception("Can't add another bootstrap");
 		}

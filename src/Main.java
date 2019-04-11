@@ -9,23 +9,41 @@ import java.util.Random;
  *
  */
 public class Main {
-	static int bit = 4;
+	static int bit = 5;
 	static int num_nodes = 5;
 	static int kbuckets = 2;
 
 	public static void main(String[] args) {
-		
-		// Get <num_nodes> unique random nodes
-		LinkedList<Integer> unique_random = randomNumbers(num_nodes, bit);
+		try {
 
-		// The first is used as the bootstrap node
-		Integer bootstrap = unique_random.pop();
+			// Get <num_nodes> unique random nodes
+			LinkedList<Integer> unique_id_random = randomNumbers(num_nodes, bit);
 
-		Kademlia kad = new Kademlia();
-		
-		
-		
-		
+			LinkedList<Node> nodes = new LinkedList<Node>();
+
+			Kademlia kad = new Kademlia();
+
+			// generates nodes
+			for (Integer x : unique_id_random) {
+				nodes.add(new Node(x));
+			}
+
+			for (Node n : nodes) {
+				System.out.println(n.toString());
+			}
+			
+			int xor = nodes.get(0).getID() ^ nodes.get(1).getID();
+			System.out.println(String.format("%" + Main.bit + "s", Integer.toBinaryString(xor)).replace(' ', '0'));
+
+			// the first one is the bootstrap
+			kad.addBooststrap(nodes.pop());
+
+			// the others are common nodes
+			kad.join(nodes.pop());
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -39,7 +57,7 @@ public class Main {
 	static LinkedList<Integer> randomNumbers(int num, int n_bit) {
 		LinkedList<Integer> res = new LinkedList<Integer>();
 		Random rand = new Random();
-		Integer bound = (int) Math.pow(2, n_bit) + 1;
+		Integer bound = (int) Math.pow(2, n_bit);
 
 		while (res.size() < num) {
 			Integer tmp = rand.nextInt(bound);
@@ -47,8 +65,6 @@ public class Main {
 				res.add(tmp);
 			}
 		}
-
 		return res;
-
 	}
 }

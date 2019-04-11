@@ -1,5 +1,6 @@
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Random;
 
 /**
@@ -7,15 +8,16 @@ import java.util.Random;
  *
  */
 public class Node {
-	private String id;
+	private int id;
 	private String IP;
-	private Integer port;
+	private int port;
 	private String[][] DHT;
 
-	Node() throws NoSuchAlgorithmException {
+	Node(int id) throws NoSuchAlgorithmException {
 		this.IP = generateIP();
 		this.port = generatePort();
-		this.id = sha1(IP + ":" + port);
+		// this.id = sha1(IP + ":" + port);
+		this.id = id;
 	}
 
 	private static String generateIP() {
@@ -39,15 +41,16 @@ public class Node {
 		return sb.toString();
 	}
 
-	public String getID() {
-		return new String(this.id);
+	public int getID() {
+		return this.id;
 	}
 
 	public String toString() {
-		return this.IP + ":" + this.port;
+		String bin_ID = String.format("%" + Main.bit + "s", Integer.toBinaryString(this.id)).replace(' ', '0');
+		return "<" + bin_ID + "," + this.IP + ":" + this.port + ">";
 
 	}
-	
+
 	public boolean equals(Node node) {
 		return this.id == node.getID();
 	}
