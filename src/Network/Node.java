@@ -1,36 +1,76 @@
 package Network;
 
+import java.math.BigInteger;
 import java.util.LinkedList;
-import java.util.Random;
 
-import DataStructures.RoutingTable;
+import Main.Start;
 
 /**
  * @author Andrea Bruno
  *
  */
-public class Node extends Peer {
+public class Node {
 
-	private RoutingTable DHT;
+	private Host host = new Host();
+	private RoutingTable DHT = new RoutingTable();
 	private Kademlia kad;
+	private Host boot;
 
 	public Node(Kademlia kad) {
-		connect(kad);
+		this.kad = kad;
+		boot = connect(kad);
+		
 	}
 
-	private void connect(Kademlia kad) {
-		Peer boostrap = kad.getBootstrap(this);
-		// TODO fill the DHT
+	private Host connect(Kademlia kad) {
+		// Get the bootstrap node
+		Host bootstrap = kad.getBootstrap(this.host);
+
+		if (bootstrap != null) {
+			this.insert(bootstrap);
+		}
+		
+		return bootstrap;
 	}
 
-	// public String toString() {
-	// String bin_ID = String.format("%" + Main.bit + "s",
-	// Integer.toBinaryString(this.id)).replace(' ', '0');
-	// return "<" + this.id + "," + bin_ID + "," + this.IP + ":" + this.port + ">";
-	// // return "<" + this.id + "," + this.IP + ":" + this.port + ">";
-	// }
-	//
-	// public boolean equals(Node node) {
-	// return this.id == node.getID();
-	// }
+	String getID() {
+		return host.getID();
+	}
+
+	public String toString() {
+		return this.host.toString();
+	}
+
+	// insert host into the DHT of node in the right position
+	void insert(Host host) {
+
+		BigInteger nodeID = new BigInteger(this.getID(), 16);
+		BigInteger peerID = new BigInteger(host.getID(), 16);
+		BigInteger xor = nodeID.xor(peerID);
+
+		int log2 = (int) (Math.floor(Math.log(xor.doubleValue()) / Math.log(2)));
+
+		this.DHT.insert(host, log2);
+
+		return;
+	}
+
+	class RoutingTable {
+		private int bit = Start.bit;
+		private int bucket_size = Start.bucket_size;
+
+		private LinkedList<Host>[] bucket = new LinkedList[bit];
+
+		void insert(Host host, int pos) {
+			if (bucket[pos] == null) {
+				bucket[pos] = new LinkedList<Host>();
+			}
+
+			if (bucket[pos].size() >= bucket_size) {
+				bucket[pos].removeLast();
+			}
+			bucket[pos].add(host);
+		}
+
+	}
 }

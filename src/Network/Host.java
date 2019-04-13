@@ -5,14 +5,15 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
-public class Peer {
+public class Host {
 	private String ID;
 	private String IP_Address;
 	private String port;
 
-	Peer() {
+	Host() {
 		this.IP_Address = generateIP();
 		this.port = generatePort();
+//		this.ID = "" + (new Random().nextInt(64));
 		this.ID = generateID(this.IP_Address + ":" + this.port);
 	}
 
@@ -53,6 +54,14 @@ public class Peer {
 			return null;
 		}
 
+	}
+
+	public String toString() {
+		return this.ID + "," + this.IP_Address + ":" + this.port;
+	}
+
+	public String getID() {
+		return new String(this.ID);
 	}
 
 }
