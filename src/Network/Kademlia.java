@@ -9,7 +9,7 @@ import java.util.Set;
 import Start.Start;
 
 public class Kademlia {
-	private HashMap<String, Node> node_list = new HashMap<String, Node>();
+	public HashMap<String, Node> node_list = new HashMap<String, Node>();
 
 	// if someone calls the bootstrap means that it is a new node
 	Peer getBootstrap(Node node) {

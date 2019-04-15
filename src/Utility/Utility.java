@@ -4,6 +4,7 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Random;
+import Start.Start;
 
 public class Utility {
 	public static String generateIP() {
@@ -16,7 +17,11 @@ public class Utility {
 		return "" + rand.nextInt(65535);
 	}
 
-	public static String generateID(String IP_Port) {
+	public static String generateID() {
+		return "" + new Random().nextInt((int) Math.pow(2, Start.bit));
+	}
+
+	public static String generateHASH(String IP_Port) {
 		try {
 			// Static getInstance method is called with hashing SHA
 			MessageDigest md = MessageDigest.getInstance("SHA-1");

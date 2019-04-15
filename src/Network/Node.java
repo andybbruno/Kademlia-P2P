@@ -25,18 +25,39 @@ public class Node {
 		boot = connect(kad);
 
 		if (boot != null) {
-			// In order to join, the node sends a FIND_NODE to the bootstrap
-			Peer[] list = kad.FIND_NODE_RPC(this, boot);
+//			// In order to join, the node sends a FIND_NODE to the bootstrap
+//			Peer[] list = kad.FIND_NODE_RPC(this, boot);
+
+			Peer[] list = this.lookup(this.peer);
 
 			// Then insert the results to its own DHT
 			this.insert(list);
 
 			// Perform the lookup
-			this.lookup(this.peer);
+			Peer[] lookup_list = this.lookup(this.peer);
 
+			for (Peer x : lookup_list) {
+				this.insert(x);
+			}
+		}
+	}
+
+	public LinkedList<String> getEdges() {
+		LinkedList<Peer> tmp = new LinkedList<Peer>();
+
+		for (int i = 0; i < Start.bit; i++) {
+			if (this.DHT.bucket[i] != null) {
+				tmp.addAll(this.DHT.bucket[i]);
+			}
 		}
 
-		System.out.println();
+		LinkedList<String> result = new LinkedList<String>();
+
+		for (Peer x : tmp) {
+			result.add(this.getID() + "," + x.getID());
+		}
+
+		return result;
 	}
 
 	private Peer[] lookup(Peer peer) {
@@ -66,17 +87,17 @@ public class Node {
 					if (!alreadyVisited.contains(x)) {
 						Node sender = kad.getNodeFromPeer(x);
 						Peer[] ret_list = kad.FIND_NODE_RPC(sender, peer);
+						alreadyVisited.add(x);
 
 						if (ret_list != null) {
 							somethingToMerge = result.addAll(Arrays.asList(ret_list));
 						}
 					}
 				}
-
-				for (Peer x : alphaLIST)
-					alreadyVisited.add(x);
 			}
 		} while (somethingToMerge);
+
+		result.addAll(alreadyVisited);
 
 		return result.toArray(new Peer[result.size()]);
 	}
@@ -96,9 +117,16 @@ public class Node {
 	}
 
 	public Peer[] findKClosest(Peer peer, int k) {
-		BigInteger nodeID = new BigInteger(peer.getID(), 16);
-		int log2 = (int) (Math.floor(Math.log(nodeID.doubleValue()) / Math.log(2)));
 
+		int log2;
+
+		if (Start.SHA1) {
+			BigInteger peerID = new BigInteger(peer.getID(), 16);
+			log2 = (int) (Math.floor(Math.log(peerID.doubleValue()) / Math.log(2)));
+		} else {
+			int peerID = Integer.parseInt(getID());
+			log2 = (int) (Math.floor(Math.log(peerID / Math.log(2))));
+		}
 		int sizeAtLog = 0;
 		Peer[] ret = null;
 
@@ -122,14 +150,12 @@ public class Node {
 			ret = getNeighbourPeers(log2);
 		}
 
-		
-		//delete the caller of the procedure if for some reasons is in the list
+		// delete the caller of the procedure if for some reasons is in the list
 		HashSet<Peer> list = new HashSet<Peer>(Arrays.asList(ret));
-		if(list.contains(peer)) {
+		if (list.contains(peer)) {
 			list.remove(peer);
 		}
-		
-		
+
 		// since now I know this peer, I add it to its own DHT
 		this.insert(peer);
 
@@ -211,12 +237,17 @@ public class Node {
 			return;
 		}
 
-		BigInteger nodeID = new BigInteger(this.getID(), 16);
-		BigInteger peerID = new BigInteger(peer.getID(), 16);
-		BigInteger xor = nodeID.xor(peerID);
+		int log2;
 
-		int log2 = (int) (Math.floor(Math.log(xor.doubleValue()) / Math.log(2)));
-
+		if (Start.SHA1) {
+			BigInteger nodeID = new BigInteger(this.getID(), 16);
+			BigInteger peerID = new BigInteger(peer.getID(), 16);
+			BigInteger xor = nodeID.xor(peerID);
+			log2 = (int) (Math.floor(Math.log(xor.doubleValue()) / Math.log(2)));
+		} else {
+			int xor = Integer.parseInt(this.getID()) ^ Integer.parseInt(peer.getID());
+			log2 = (int) (Math.floor(Math.log(xor / Math.log(2))));
+		}
 		this.DHT.put(peer, log2);
 	}
 
