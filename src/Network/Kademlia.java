@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Random;
 import java.util.Set;
 
-import Main.Start;
+import Start.Start;
 
 public class Kademlia {
 	private HashMap<String, Node> node_list = new HashMap<String, Node>();
@@ -29,16 +29,21 @@ public class Kademlia {
 		return ret;
 	}
 
-	public Peer[] FIND_NODE_RPC (Node sender, Peer receiver){
+	public Peer[] FIND_NODE_RPC(Node sender, Peer receiver) {
 
-		String ID = sender.getID();
-		
-		//Given the ID, get the node in order to access its own DHT
-		Node receiverNode = node_list.get(ID);
+		// Given the ID, get the node in order to access its own DHT
+		Node receiverNode = getNodeFromPeer(receiver);
 
-		Peer[] closest = receiverNode.findKClosest(ID, Start.bucket_size);
-		
+
+		//find the ID of the sender in the receiver
+		Peer[] closest = receiverNode.findKClosest(sender.getPeer(), Start.bucket_size);
+
 		return closest;
 	}
-	
+
+	public Node getNodeFromPeer(Peer peer) {
+		String ID = peer.getID();
+		return node_list.get(ID);
+	}
+
 }

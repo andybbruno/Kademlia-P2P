@@ -15,7 +15,7 @@ public class Peer {
 	}
 
 	public String toString() {
-		return this.ID + "," + this.IP_Address + ":" + this.port;
+		return this.IP_Address + ":" + this.port + "," + this.ID;
 	}
 
 	public String getID() {

@@ -1,4 +1,4 @@
-package Main;
+package Start;
 import java.util.LinkedList;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
@@ -14,8 +14,8 @@ import Network.Node;
  */
 public class Start {
 	public static int bit = 160;
-	public static int num_nodes = 1000;
-	public static int bucket_size = 2;
+	public static int num_nodes = 100;
+	public static int bucket_size = 20;
 	public static int alpha = 3;
 
 	public static void main(String[] args) {
@@ -30,7 +30,10 @@ public class Start {
 			nodes.add(new Node(kad));
 		}
 		
+		
 		System.out.println("ciao");
+		
+		
 	}
 
 	/**

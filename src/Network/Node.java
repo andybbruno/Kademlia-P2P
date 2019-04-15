@@ -2,9 +2,12 @@ package Network;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 
-import Main.Start;
+import Start.Start;
 
 /**
  * @author Andrea Bruno
@@ -37,72 +40,127 @@ public class Node {
 	}
 
 	private Peer[] lookup(Peer peer) {
-		String ID = peer.getID();
-		Peer[] alphaPeers = getAlphaPeers(Start.alpha);
-		Peer[] tmp;
-				
-		for (Peer x : alphaPeers) {
-			// aggiungi a tmp x.FIND_NODE_RPC(this, boot);
+
+		HashSet<Peer> alreadyVisited = new HashSet<Peer>();
+		HashSet<Peer> result = new HashSet<Peer>();
+		boolean somethingToMerge = true;
+
+		Peer[] alphaDHT = getAlphaPeersFromDHT(Start.alpha);
+
+		for (Peer x : alphaDHT) {
+			Peer[] ret_list = kad.FIND_NODE_RPC(this, x);
+
+			if (ret_list != null) {
+				result.addAll(Arrays.asList(ret_list));
+			}
 		}
 
-		return null;
+		do {
+			if (result.size() == 0) {
+				somethingToMerge = false;
+			} else {
+				int maxSize = Math.min(Start.alpha, result.size());
+				Peer[] alphaLIST = result.toArray(new Peer[maxSize]);
+
+				for (Peer x : alphaLIST) {
+					if (!alreadyVisited.contains(x)) {
+						Node sender = kad.getNodeFromPeer(x);
+						Peer[] ret_list = kad.FIND_NODE_RPC(sender, peer);
+
+						if (ret_list != null) {
+							somethingToMerge = result.addAll(Arrays.asList(ret_list));
+						}
+					}
+				}
+
+				for (Peer x : alphaLIST)
+					alreadyVisited.add(x);
+			}
+		} while (somethingToMerge);
+
+		return result.toArray(new Peer[result.size()]);
 	}
 
-	private Peer[] getAlphaPeers(int alpha) {
-		return findKClosest(this.peer.getID(), alpha);
+	private Peer[] getAlphaPeersFromDHT(int alpha) {
+		LinkedList<Peer> list = new LinkedList<Peer>();
+		int i = 0;
+		int maxSize = Math.min(alpha, this.DHT.active_nodes);
+
+		while (list.size() < maxSize) {
+			if (this.DHT.bucket[i] != null) {
+				list.addAll(this.DHT.bucket[i]);
+			}
+			i++;
+		}
+		return list.toArray(new Peer[list.size()]);
 	}
 
-	public Peer[] findKClosest(String ID, int k) {
-		BigInteger nodeID = new BigInteger(ID, 16);
+	public Peer[] findKClosest(Peer peer, int k) {
+		BigInteger nodeID = new BigInteger(peer.getID(), 16);
 		int log2 = (int) (Math.floor(Math.log(nodeID.doubleValue()) / Math.log(2)));
 
 		int sizeAtLog = 0;
+		Peer[] ret = null;
 
 		if (this.DHT.bucket[log2] != null) {
 			sizeAtLog = this.DHT.bucket[log2].size();
 		}
 		// if the bucket contains K elements return the entire bucket
 		if (sizeAtLog == k) {
-			return this.DHT.bucket[log2].toArray(new Peer[k]);
+			ret = this.DHT.bucket[log2].toArray(new Peer[k]);
 		}
 
 		// if the DHT contains less(or =) elements than K, then return all nodes it owns
 		else if (DHT.active_nodes <= k) {
-			return getAllPeers();
+			ret = getAllPeers();
 		}
 
 		// if there are more than K elements but the selected bucket does not have K
 		// elements
 		// then select K elements from the neighbours of the bucket at position log2
 		else if ((DHT.active_nodes > k) && (sizeAtLog < k)) {
-			return getNeighbourPeers(log2);
+			ret = getNeighbourPeers(log2);
 		}
 
-		return null;
+		
+		//delete the caller of the procedure if for some reasons is in the list
+		HashSet<Peer> list = new HashSet<Peer>(Arrays.asList(ret));
+		if(list.contains(peer)) {
+			list.remove(peer);
+		}
+		
+		
+		// since now I know this peer, I add it to its own DHT
+		this.insert(peer);
+
+		return list.toArray(new Peer[list.size()]);
 	}
 
 	private Peer[] getNeighbourPeers(int bucket_position) {
 		int k = Start.bucket_size;
-		ArrayList<Peer> tmp = new ArrayList<Peer>();
-
-		tmp.addAll(this.DHT.bucket[bucket_position]);
+		HashSet<Peer> tmp = new HashSet<Peer>();
 
 		boolean go_up = true;
-		int offset = 1;
+		int offset = 0;
 
-		while (tmp.size() < k) {
+		int maxPossibleSize = Math.min(this.DHT.active_nodes, k);
+
+		while (tmp.size() < maxPossibleSize) {
 			int pos;
 			if (go_up) {
 				pos = bucket_position - offset;
 			} else {
 				pos = bucket_position + offset;
+				offset++;
 			}
 
-			if (this.DHT.bucket[pos] != null) {
-				tmp.addAll(this.DHT.bucket[pos]);
+			if ((pos >= 0) && (pos < Start.bit)) {
+				if (this.DHT.bucket[pos] != null) {
+					tmp.addAll(this.DHT.bucket[pos]);
+				}
 			}
 
-			offset++;
+			go_up = !go_up;
 		}
 
 		Peer[] lst = tmp.toArray(new Peer[tmp.size()]);
@@ -111,7 +169,7 @@ public class Node {
 	}
 
 	private Peer[] getAllPeers() {
-		ArrayList<Peer> tmp = new ArrayList<Peer>();
+		HashSet<Peer> tmp = new HashSet<Peer>();
 
 		for (LinkedList<Peer> x : this.DHT.bucket) {
 			if (x != null) {
@@ -148,6 +206,10 @@ public class Node {
 
 	// insert peer into the DHT of node in the right position
 	private void insert(Peer peer) {
+		// Verify that I do not insert myself in my own DHT
+		if (this.getID().equals(peer.getID())) {
+			return;
+		}
 
 		BigInteger nodeID = new BigInteger(this.getID(), 16);
 		BigInteger peerID = new BigInteger(peer.getID(), 16);
@@ -156,7 +218,6 @@ public class Node {
 		int log2 = (int) (Math.floor(Math.log(xor.doubleValue()) / Math.log(2)));
 
 		this.DHT.put(peer, log2);
-
 	}
 
 	private void insert(Peer[] list) {
@@ -179,6 +240,7 @@ public class Node {
 
 			if (bucket[pos].size() >= bucket_size) {
 				bucket[pos].removeLast();
+				bucket[pos].add(peer);
 			}
 			if (!bucket[pos].contains(peer)) {
 				bucket[pos].add(peer);
