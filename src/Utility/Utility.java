@@ -1,33 +1,22 @@
-package Network;
+package Utility;
 
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 
-public class Host {
-	private String ID;
-	private String IP_Address;
-	private String port;
-
-	Host() {
-		this.IP_Address = generateIP();
-		this.port = generatePort();
-//		this.ID = "" + (new Random().nextInt(64));
-		this.ID = generateID(this.IP_Address + ":" + this.port);
-	}
-
-	private String generateIP() {
+public class Utility {
+	public static String generateIP() {
 		Random rand = new Random();
 		return (rand.nextInt(255) + 1) + "." + rand.nextInt(255) + "." + rand.nextInt(255) + "." + rand.nextInt(255);
 	}
 
-	private String generatePort() {
+	public static String generatePort() {
 		Random rand = new Random();
 		return "" + rand.nextInt(65535);
 	}
 
-	private String generateID(String IP_Port) {
+	public static String generateID(String IP_Port) {
 		try {
 			// Static getInstance method is called with hashing SHA
 			MessageDigest md = MessageDigest.getInstance("SHA-1");
@@ -55,13 +44,4 @@ public class Host {
 		}
 
 	}
-
-	public String toString() {
-		return this.ID + "," + this.IP_Address + ":" + this.port;
-	}
-
-	public String getID() {
-		return new String(this.ID);
-	}
-
 }

@@ -14,7 +14,7 @@ import Network.Node;
  */
 public class Start {
 	public static int bit = 160;
-	public static int num_nodes = 10;
+	public static int num_nodes = 1000;
 	public static int bucket_size = 2;
 	public static int alpha = 3;
 
@@ -52,6 +52,6 @@ public class Start {
 				res.add(tmp);
 			}
 		}
-		return res.stream().mapToInt(x -> x).toArray();
+		return res.parallelStream().mapToInt(x -> x).toArray();
 	}
 }
