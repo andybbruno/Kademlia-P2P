@@ -29,15 +29,18 @@ public class Kademlia {
 		return ret;
 	}
 
-	public Peer[] FIND_NODE_RPC(Node sender, Peer receiver) {
+	public Peer[] FIND_NODE_RPC(Node sender, Peer receiver, String ID) {
 
 		// Given the ID, get the node in order to access its own DHT
 		Node receiverNode = getNodeFromPeer(receiver);
 
 
 		//find the ID of the sender in the receiver
-		Peer[] closest = receiverNode.findKClosest(sender.getPeer(), Start.bucket_size);
+		Peer[] closest = receiverNode.findKClosest(ID, Start.bucket_size);
 
+		// since now I know this peer, I add it to its own DHT
+		receiverNode.insert(sender.getPeer());
+				
 		return closest;
 	}
 

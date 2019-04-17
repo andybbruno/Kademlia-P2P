@@ -16,13 +16,13 @@ import Network.Node;
  *
  */
 public class Start {
-	private static final String FILE_NAME = "kad.csv";
-	
 	public static boolean SHA1 = false;
-	public static int bit = 8;
-	public static int num_nodes = 15;
-	public static int bucket_size = 4;
+	public static int bit = 32;
+	public static int num_nodes = 100;
+	public static int bucket_size = 20;
 	public static int alpha = 3;
+	public static String filename = "Kad_N_" + num_nodes + "_BIT_" + bit + "_K_" + bucket_size + ".csv";
+
 
 	public static void main(String[] args) {
 
@@ -50,17 +50,21 @@ public class Start {
 			}
 		}
 
-		try (PrintWriter writer = new PrintWriter(new File(FILE_NAME))) {
+		int num_edges = 0;
+
+		try (PrintWriter writer = new PrintWriter(new File(filename))) {
 
 			StringBuilder sb = new StringBuilder();
 
 			for (String x : edges) {
 				sb.append(x);
 				sb.append('\n');
+				num_edges++;
+
 			}
 
 			writer.write(sb.toString());
-			
+
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -71,28 +75,7 @@ public class Start {
 		long timeElapsed = endTime - startTime;
 
 		System.out.println("Execution time in milliseconds : " + timeElapsed / 1000000);
+		System.out.println(num_edges + " edges");
 
-	}
-
-	/**
-	 * Generates {@code num} random numbers between 0 and 2 ^ {@code n_bit}
-	 * 
-	 * @param num
-	 * @param n_bit
-	 * 
-	 * @return a list of {@code num} unique random numbers
-	 */
-	static int[] randomNumbers(int num, int n_bit) {
-		LinkedList<Integer> res = new LinkedList<Integer>();
-		Random rand = new Random();
-		Integer bound = (int) Math.pow(2, n_bit);
-
-		while (res.size() < num) {
-			Integer tmp = rand.nextInt(bound);
-			if (!res.contains(tmp)) {
-				res.add(tmp);
-			}
-		}
-		return res.parallelStream().mapToInt(x -> x).toArray();
 	}
 }

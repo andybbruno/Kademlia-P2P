@@ -1,5 +1,6 @@
 package Network;
 
+import java.util.Comparator;
 import java.util.HashSet;
 
 import Utility.Utility;
@@ -20,12 +21,12 @@ public class Peer {
 		} while (!alreadyUsedIDS.add(this.ID));
 	}
 
-	public String toString() {
-		return this.IP_Address + ":" + this.port + "," + this.ID;
-	}
-
 	public String getID() {
 		return new String(this.ID);
 	}
 
+	@Override
+	public String toString() {
+		return this.IP_Address + ":" + this.port + "," + this.ID + " ";
+	}
 }

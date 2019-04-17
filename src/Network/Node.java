@@ -3,9 +3,12 @@ package Network;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedList;
-import java.util.List;
+import java.util.stream.Collectors;
 
 import Start.Start;
 
@@ -25,16 +28,18 @@ public class Node {
 		boot = connect(kad);
 
 		if (boot != null) {
-//			// In order to join, the node sends a FIND_NODE to the bootstrap
-//			Peer[] list = kad.FIND_NODE_RPC(this, boot);
-
-			Peer[] list = this.lookup(this.peer);
+			Peer[] list = this.lookup(this.peer.getID());
 
 			// Then insert the results to its own DHT
 			this.insert(list);
 
-			// Perform the lookup
-			Peer[] lookup_list = this.lookup(this.peer);
+			Node bootstrap = kad.getNodeFromPeer(boot);
+
+			// Perform the lookup on the bootstrap
+
+			// this.lookup(RANDOM LONTANO)
+
+			Peer[] lookup_list = this.lookup(Utility.Utility.generateID());
 
 			for (Peer x : lookup_list) {
 				this.insert(x);
@@ -60,46 +65,99 @@ public class Node {
 		return result;
 	}
 
-	private Peer[] lookup(Peer peer) {
+	private Peer[] lookup(String ID) {
 
 		HashSet<Peer> alreadyVisited = new HashSet<Peer>();
-		HashSet<Peer> result = new HashSet<Peer>();
+		LinkedHashSet<Peer> kresult = new LinkedHashSet<Peer>();
 		boolean somethingToMerge = true;
 
 		Peer[] alphaDHT = getAlphaPeersFromDHT(Start.alpha);
 
+		// contatta gli alfa nodi
 		for (Peer x : alphaDHT) {
-			Peer[] ret_list = kad.FIND_NODE_RPC(this, x);
+			Peer[] ret_list = kad.FIND_NODE_RPC(this, x, ID);
 
 			if (ret_list != null) {
-				result.addAll(Arrays.asList(ret_list));
+				kresult.addAll(Arrays.asList(ret_list));
 			}
 		}
 
+		// ordina le risposte ricevute dagli alfa nodi
+		kresult = new LinkedHashSet<Peer>(getKOrdered(kresult));
+
+		alreadyVisited.addAll(Arrays.asList(alphaDHT));
+
 		do {
-			if (result.size() == 0) {
+			if (kresult.size() == 0) {
 				somethingToMerge = false;
 			} else {
-				int maxSize = Math.min(Start.alpha, result.size());
-				Peer[] alphaLIST = result.toArray(new Peer[maxSize]);
+				// seleziono alfa nodi da kresult
+				int maxSize = Math.min(Start.alpha, kresult.size());
+				Peer[] alphaLIST = kresult.stream().limit(maxSize).toArray(Peer[]::new);
 
+				ArrayList<Peer> appendList = new ArrayList<Peer>();
+
+				// contatto gli alfa di kresult
 				for (Peer x : alphaLIST) {
+					// se non è un nodo già contattato
 					if (!alreadyVisited.contains(x)) {
-						Node sender = kad.getNodeFromPeer(x);
-						Peer[] ret_list = kad.FIND_NODE_RPC(sender, peer);
+						// esegui la find_node
+						Peer[] ret_list = kad.FIND_NODE_RPC(this, x, ID);
+						// e imposta questo come visitato
 						alreadyVisited.add(x);
-
 						if (ret_list != null) {
-							somethingToMerge = result.addAll(Arrays.asList(ret_list));
+							appendList.addAll(Arrays.asList(ret_list));
 						}
 					}
 				}
+
+				// il risultato di alfa iterazioni saranno alfa * K nodi e saranno memorizzati
+				// in appendList
+				// se appendList contiene qualcosa di nuovo, la addAll() produrrà true
+				if (appendList != null) {
+					somethingToMerge = kresult.addAll(appendList);
+				}
 			}
+
+			kresult = new LinkedHashSet<Peer>(getKOrdered(kresult));
+
 		} while (somethingToMerge);
 
-		result.addAll(alreadyVisited);
+		// SERVE???
+		// kresult.addAll(alreadyVisited);
 
-		return result.toArray(new Peer[result.size()]);
+		return kresult.toArray(new Peer[kresult.size()]);
+	}
+
+	private ArrayList<Peer> getKOrdered(HashSet<Peer> kresult) {
+		ArrayList<Peer> arr = new ArrayList<Peer>(kresult);
+		HashMap<Peer, Integer> xorMap = new HashMap<Peer, Integer>();
+		
+		//elimino me stesso dalla lista
+		arr.remove(this.peer);
+
+		// creo la mappa chiave valore basata sullo xor tra (this) e la lista che arriva
+		for (Peer px : arr) {
+			int thisID = Integer.parseInt(this.getID());
+			int pxID = Integer.parseInt(px.getID());
+			xorMap.put(px, (thisID ^ pxID));
+		}
+
+		arr.sort(new Comparator<Peer>() {
+
+			@Override
+			public int compare(Peer o1, Peer o2) {
+				int val_o1 = xorMap.get(o1);
+				int val_o2 = xorMap.get(o2);
+				return val_o1 - val_o2;
+			}
+
+		});
+
+		if (arr.size() > Start.bucket_size) {
+			arr = (ArrayList<Peer>) arr.stream().limit(Start.bucket_size).collect(Collectors.toList());
+		}
+		return arr;
 	}
 
 	private Peer[] getAlphaPeersFromDHT(int alpha) {
@@ -116,16 +174,20 @@ public class Node {
 		return list.toArray(new Peer[list.size()]);
 	}
 
-	public Peer[] findKClosest(Peer peer, int k) {
+	public Peer[] findKClosest(String ID, int k) {
 
 		int log2;
 
 		if (Start.SHA1) {
-			BigInteger peerID = new BigInteger(peer.getID(), 16);
+			BigInteger peerID = new BigInteger(ID, 16);
 			log2 = (int) (Math.floor(Math.log(peerID.doubleValue()) / Math.log(2)));
 		} else {
-			int peerID = Integer.parseInt(getID());
+			int peerID = Integer.parseInt(ID);
 			log2 = (int) (Math.floor(Math.log(peerID / Math.log(2))));
+
+			if (log2 < 1) {
+				log2 = 0;
+			}
 		}
 		int sizeAtLog = 0;
 		Peer[] ret = null;
@@ -152,12 +214,9 @@ public class Node {
 
 		// delete the caller of the procedure if for some reasons is in the list
 		HashSet<Peer> list = new HashSet<Peer>(Arrays.asList(ret));
-		if (list.contains(peer)) {
-			list.remove(peer);
+		if (list.contains(ID)) {
+			list.remove(ID);
 		}
-
-		// since now I know this peer, I add it to its own DHT
-		this.insert(peer);
 
 		return list.toArray(new Peer[list.size()]);
 	}
@@ -226,12 +285,13 @@ public class Node {
 		return this.peer;
 	}
 
+	@Override
 	public String toString() {
 		return this.peer.toString();
 	}
 
 	// insert peer into the DHT of node in the right position
-	private void insert(Peer peer) {
+	void insert(Peer peer) {
 		// Verify that I do not insert myself in my own DHT
 		if (this.getID().equals(peer.getID())) {
 			return;
@@ -278,6 +338,5 @@ public class Node {
 				active_nodes++;
 			}
 		}
-
 	}
 }
