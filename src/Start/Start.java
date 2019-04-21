@@ -20,19 +20,20 @@ public class Start {
 	public static String filename;
 
 	static int[] arr_bit = { 32, 64, 128, 160, 256, 512, 1024, 2048 };
-	static int[] arr_nod = { 50, 100, 200, 500, 1000, 2000, 5000, 10000};
-	static int[] arr_buck = { 1, 2, 3, 5, 8, 13, 15, 20 };
+	static int[] arr_nod = { 50, 100, 200, 500, 1000, 2000, 5000, 10000 };
+	static int[] arr_buck = { 2, 3, 5, 8, 10, 13, 15, 20 };
 
 	public static void main(String[] args) {
+		long start = System.nanoTime();
 
-		for (int b : arr_bit) {
-			bit = b;
-			for (int nod : arr_nod) {
-				num_nodes = nod;
-				for (int buck : arr_buck) {
-					bucket_size = buck;
+		for (int i = 0; i < arr_bit.length; i++) {
+			bit = arr_bit[i];
+			for (int j = 0; j < arr_nod.length; j++) {
+				num_nodes = arr_nod[j];
+				for (int k = 0; k < arr_buck.length; k++) {
+					bucket_size = arr_buck[k];
 
-					filename = "ANALYSIS/Kad_N_" + num_nodes + "_BIT_" + bit + "_K_" + bucket_size + ".csv";
+					filename = "ANALYSIS/csv/Kad_N_" + num_nodes + "_BIT_" + bit + "_K_" + bucket_size + ".csv";
 					System.out.println(filename);
 
 					// Create the network
@@ -46,12 +47,12 @@ public class Start {
 
 					long startTime = System.nanoTime();
 
-					for (int i = 0; i < num_nodes; i++) {
+					for (int q = 0; q < num_nodes; q++) {
 						nodes.add(new Node(kad));
 					}
 
-					for (int i = 0; i < num_nodes; i++) {
-						edges.addAll(nodes.get(i).getEdges());
+					for (int c = 0; c < num_nodes; c++) {
+						edges.addAll(nodes.get(c).getEdges());
 					}
 
 					int num_edges = 0;
@@ -83,5 +84,12 @@ public class Start {
 				}
 			}
 		}
+
+		long end = System.nanoTime();
+
+		// get difference of two nanoTime values
+		long time = end - start;
+
+		System.out.println("\n\nTotal time in seconds : " + time / 1000000000);
 	}
 }
