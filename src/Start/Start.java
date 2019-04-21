@@ -3,11 +3,6 @@ package Start;
 import java.util.LinkedList;
 import java.io.File;
 import java.io.PrintWriter;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Random;
-
 import Network.Kademlia;
 import Network.Node;
 
@@ -18,14 +13,18 @@ import Network.Node;
 public class Start {
 	public static boolean SHA1 = false;
 	public static int bit = 32;
-	public static int num_nodes = 100;
-	public static int bucket_size = 20;
+	public static int num_nodes = 10;
+	public static int bucket_size = 2;
 	public static int alpha = 3;
-	public static String filename = "Kad_N_" + num_nodes + "_BIT_" + bit + "_K_" + bucket_size + ".csv";
-
+	public static String filename = "ANALYSIS/Kad_N_" + num_nodes + "_BIT_" + bit + "_K_" + bucket_size + ".csv";
 
 	public static void main(String[] args) {
-
+		
+		
+		
+//		new Analysis();
+		
+		
 		// Create the network
 		Kademlia kad = new Kademlia();
 
@@ -77,5 +76,6 @@ public class Start {
 		System.out.println("Execution time in milliseconds : " + timeElapsed / 1000000);
 		System.out.println(num_edges + " edges");
 
+		
 	}
 }

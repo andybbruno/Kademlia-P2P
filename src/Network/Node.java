@@ -317,6 +317,10 @@ public class Node {
 		}
 	}
 
+    public Object getNodeData() {
+        throw new UnsupportedOperationException("Not supported yet."); //To change body of generated methods, choose Tools | Templates.
+    }
+
 	class RoutingTable {
 		private int bit = Start.bit;
 		private int bucket_size = Start.bucket_size;
