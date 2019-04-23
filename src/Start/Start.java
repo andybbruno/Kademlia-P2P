@@ -54,7 +54,6 @@ public class Start {
 					for (int c = 0; c < num_nodes; c++) {
 						edges.addAll(nodes.get(c).getEdges());
 					}
-
 					int num_edges = 0;
 
 					try (PrintWriter writer = new PrintWriter(new File(filename))) {
@@ -86,10 +85,9 @@ public class Start {
 		}
 
 		long end = System.nanoTime();
-
 		// get difference of two nanoTime values
 		long time = end - start;
-
+		
 		System.out.println("\n\nTotal time in seconds : " + time / 1000000000);
 	}
 }
