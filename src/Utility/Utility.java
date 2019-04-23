@@ -18,7 +18,17 @@ public class Utility {
 	}
 
 	public static String generateID() {
-		return "" + new Random().nextInt((int) Math.pow(2, Start.bit));
+		return getRandomBigInteger().toString();
+	}
+
+	private static BigInteger getRandomBigInteger() {
+		Random rand = new Random();
+		BigInteger upperLimit = BigInteger.valueOf(2).pow(Start.bit);
+		BigInteger result;
+		do {
+			result = new BigInteger(upperLimit.bitLength(), rand);
+		} while (result.compareTo(upperLimit) >= 0);
+		return result;
 	}
 
 	public static String generateHASH(String IP_Port) {

@@ -33,7 +33,7 @@ public class Kademlia {
 
 
 		//find the ID of the sender in the receiver
-		Peer[] closest = receiverNode.findKClosest(ID, Start.bucket_size);
+		Peer[] closest = receiverNode.findKClosest(ID);
 
 		// since now I know this peer, I add it to its own DHT
 		receiverNode.insert(sender.getPeer());
