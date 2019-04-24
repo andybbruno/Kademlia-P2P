@@ -579,10 +579,9 @@ public class Node {
 				if (!bucket[pos].contains(peer)) {
 					bucket[pos].remove(bucket[pos].size() - 1);
 					bucket[pos].add(peer);
-					active_nodes++;
 				}
 			}
-			// ELSE If the bucket does not contain the given peer,
+			// If the bucket does not contain the given peer,
 			// then add it to the Routing Table
 			else if (!bucket[pos].contains(peer)) {
 				bucket[pos].add(peer);
