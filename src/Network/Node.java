@@ -14,208 +14,290 @@ import java.util.stream.Collectors;
 import Start.Start;
 
 /**
+ * In this implementation a Node is composed by an object Peer (containing
+ * <ID,IP,Port>) and by an object Rounting Table. This way, the two logics are
+ * placed in different classes.
+ * 
  * @author Andrea Bruno
  *
  */
 public class Node {
-
-//	private static ArrayList<String> allPossibleIDs = new ArrayList<String>();
-
 	private Peer peer = new Peer();
 	private RoutingTable DHT = new RoutingTable();
 	private Kademlia kad;
 	private Peer boot;
-	private LinkedList<Integer> depth = new LinkedList<Integer>();
-	private int real_lookup = 0;
+
+	// configuration option
 	private boolean refresh = Start.refresh;
 
+	// Data structure to collect stats
+	private LinkedList<Integer> hops = new LinkedList<Integer>();
+
+	/**
+	 * In order to create a Node object, I need to know to which network you want to
+	 * connect
+	 * 
+	 * @param kad
+	 */
 	public Node(Kademlia kad) {
 		this.kad = kad;
+
+		// Retrieve a bootstrap Peer
 		boot = connect(kad);
 
+		// If I am not the first who is connecting to Kademlia
 		if (boot != null) {
+
+			// Perform a lookup of myself, as the paper suggests
 			Peer[] list = this.lookup(this.peer.getID());
-			
 
 			// Then insert the results to its own DHT
 			this.insert(list);
 
+			// Two possibilities
 			if (refresh) {
-				bucketRefresh();
+				// refreshBuckets() simulates the algorithm described in the paper that is
+				// called "Bucket Refreshing". This procedure, for each bucket, will perform a
+				// lookup of an ID that belongs to that bucket. This way after m-bit
+				// lookups, all the buckets should be filled (partially).
+				refreshBuckets();
 			} else {
-				Peer[] lookup_list = this.lookup(Utility.Utility.generateID());
-				for (Peer x : lookup_list) {
-					this.insert(x);
-				}
+				// Simulates a lookup similar to Ethereum.
+				// That is, a lookup of myself, and afterwards, a lookup of a random address
+				// with ID smaller (XOR) than the bootstrap node.
+				// https://github.com/ethereum/wiki/wiki/Kademlia-Peer-Selection#lookup
+				ethereumLookup();
 			}
 		}
 
 	}
 
-	private void bucketRefresh() {
+	/**
+	 * Connects a node to a given Kademlia network
+	 * 
+	 * @param kad
+	 * @return the bootstrap info
+	 */
+	private Peer connect(Kademlia kad) {
+		// Get the bootstrap node
+		Peer bootstrap = kad.getBootstrap(this);
+
+		if (bootstrap != null) {
+			this.insert(bootstrap);
+		}
+
+		return bootstrap;
+	}
+
+	/**
+	 * Performs a lookup of a random address with ID smaller (XOR) than the
+	 * bootstrap node
+	 * 
+	 * https://github.com/ethereum/wiki/wiki/Kademlia-Peer-Selection#lookup
+	 * 
+	 */
+	private void ethereumLookup() {
+		String rnd;
+		int result;
+
+		// While the the random ID is not closer (XOR) that the bootstrap, generates a
+		// new
+		// random ID
+		do {
+			rnd = Utility.Utility.generateID();
+			BigInteger tmpID = new BigInteger(rnd);
+			BigInteger tmpXOR = tmpID.xor(new BigInteger(this.getID()));
+			BigInteger bootXOR = new BigInteger(boot.getID()).xor(new BigInteger(this.getID()));
+			result = tmpXOR.compareTo(bootXOR);
+		} while (result >= 0);
+
+		// Then perform the lookup, as Ethereum wiki suggests.
+		Peer[] lookup_list = this.lookup(rnd);
+
+		// Store the results
+		for (Peer x : lookup_list) {
+			this.insert(x);
+		}
+	}
+
+	/**
+	 * Simulates the algorithm described in the paper that is called "Bucket
+	 * Refreshing". This procedure, for each bucket, will perform a lookup of an ID
+	 * that belongs to that bucket. This way after m-bit lookups, all the buckets
+	 * should be filled (partially).
+	 */
+	private void refreshBuckets() {
+		// For each bucket
 		for (int i = 0; i < Start.bit; i++) {
 			String currentID;
 			BigInteger randID;
 			BigInteger thisID = new BigInteger(this.getID());
-			BigInteger low;
-			BigInteger high;
+			ArrayList<Peer> toAdd = new ArrayList<Peer>();
 
+			// The first bucket contains only one ID
 			if (i == 0) {
 				randID = BigInteger.valueOf(2).pow(i);
 			} else {
-				low = BigInteger.valueOf(2).pow(i);
-				high = BigInteger.valueOf(2).pow(i + 1).subtract(BigInteger.valueOf(1));
-
-				// THE SAME AS:
-				// int rnd = new Random().nextInt(high - low) + low;
-				randID = getRandomBigInteger(high.subtract(low)).add(low);
+				// Compute a random value between 2^i and 2^(i+1)
+				BigInteger low = BigInteger.valueOf(2).pow(i);
+				BigInteger high = BigInteger.valueOf(2).pow(i + 1).subtract(BigInteger.valueOf(1));
+				randID = randomBigInt(low, high);
 			}
 
-			ArrayList<Peer> toAdd = new ArrayList<Peer>();
+			// Since the inverse of XOR is XOR, to find an ID that belongs to that bucket I
+			// simply compute the XOR between this.ID and randID just computed.
 			currentID = thisID.xor(randID).toString();
+
+			// Perform a lookup
 			Peer[] tmp = this.lookup(currentID);
+
+			// Store the results
 			toAdd.addAll(Arrays.asList(tmp));
-			real_lookup++;
-
-//			Peer[] closests = findKClosest(currentID);
-//
-//			for (Peer x : closests) {
-//				Node receiver = kad.getNodeFromPeer(x);
-//				Peer[] tmp = receiver.lookup(currentID);
-//				toAdd.addAll(Arrays.asList(tmp));
-//				real_lookup++;
-//			}
-
 			this.insert(toAdd.stream().limit(toAdd.size()).toArray(Peer[]::new));
 		}
 
 	}
 
-	public LinkedList<String> getEdges() {
-		LinkedList<Peer> tmp = new LinkedList<Peer>();
+	/**
+	 * Compute a random BigInteger in the range [lower, upper]
+	 * 
+	 * @param lower bound
+	 * @param upper bound
+	 * @return a BigInteger
+	 */
+	private BigInteger randomBigInt(BigInteger lower, BigInteger upper) {
+		BigInteger randID = getRandomBigInteger(upper.subtract(lower)).add(lower);
+		return randID;
+	}
 
-		for (int i = 0; i < Start.bit; i++) {
-			if (this.DHT.bucket[i] != null) {
-				tmp.addAll(this.DHT.bucket[i]);
-			}
-		}
-
-		LinkedList<String> result = new LinkedList<String>();
-
-		for (Peer x : tmp) {
-			result.add(this.getID() + "," + x.getID());
-		}
-
+	/**
+	 * Compute a random BigInteger in [0, upperlimit]
+	 * 
+	 * @param upperlimit
+	 * @return
+	 */
+	private BigInteger getRandomBigInteger(BigInteger upperlimit) {
+		Random rand = new Random();
+		BigInteger result;
+		do {
+			result = new BigInteger(upperlimit.bitLength(), rand);
+		} while (result.compareTo(upperlimit) >= 0);
 		return result;
 	}
 
+	/**
+	 * This procedure, implements all the functionalities of the lookup procedure
+	 * described in the Kademlia paper. Basically, every Node, given an ID, first
+	 * contacts alpha Nodes, then will store the K best results (based on XOR
+	 * closeness). If these nodes have returned new info, then continue to contact
+	 * "recursively" the resulting nodes, eliminating the ones already visited.
+	 * Finally, once there are no new info, stop the procedure and store the best K
+	 * results (based on XOR closeness).
+	 * 
+	 * @param ID
+	 * @return the best K Peers found
+	 */
 	private Peer[] lookup(String ID) {
-		real_lookup++;
 		HashSet<Peer> alreadyVisited = new HashSet<Peer>();
 		LinkedHashSet<Peer> kresult = new LinkedHashSet<Peer>();
 		boolean somethingToMerge = true;
-		int tmp_depth = 0;
+		int num_hops = 0;
 
 		Peer[] alphaDHT = getAlphaPeersFromDHT(Start.alpha);
-		tmp_depth++;
 
-		// contatta gli alfa nodi
+		// Count the number of hops
+		num_hops++;
+
+		// Contact alpha Peers
 		for (Peer x : alphaDHT) {
 			Peer[] ret_list = kad.FIND_NODE_RPC(this, x, ID);
 
+			// if the list is not void
 			if (ret_list != null) {
 				kresult.addAll(Arrays.asList(ret_list));
 			}
 		}
 
-		// ordina le risposte ricevute dagli alfa nodi
+		// Sort and prune to K the results
 		kresult = new LinkedHashSet<Peer>(getKOrdered(kresult));
 
 		alreadyVisited.addAll(Arrays.asList(alphaDHT));
 
+		// While there is something to merge
 		do {
 			if (kresult.size() == 0) {
 				somethingToMerge = false;
 			} else {
-				// seleziono alfa nodi da kresult
+				// Select alpha nodes from kresult
 				int maxSize = Math.min(Start.alpha, kresult.size());
 				Peer[] alphaLIST = kresult.stream().limit(maxSize).toArray(Peer[]::new);
-				tmp_depth++;
 
+				// Count the number of hops
+				num_hops++;
+
+				// Temporary data structure
 				ArrayList<Peer> appendList = new ArrayList<Peer>();
 
-				// contatto gli alfa di kresult
+				// Contact alpha Peers
 				for (Peer x : alphaLIST) {
-					// se non è un nodo già contattato
+
+					// If it is not an already visited node
 					if (!alreadyVisited.contains(x)) {
-						// esegui la find_node
+
+						// Do the FIND_NODE_RPC
 						Peer[] ret_list = kad.FIND_NODE_RPC(this, x, ID);
-						// e imposta questo come visitato
+
+						// Save this node as already visited
 						alreadyVisited.add(x);
+
+						// if the list is not void
 						if (ret_list != null) {
 							appendList.addAll(Arrays.asList(ret_list));
 						}
 					}
 				}
 
-				// il risultato di alfa iterazioni saranno alfa * K nodi e saranno memorizzati
-				// in appendList
-				// se appendList contiene qualcosa di nuovo, la addAll() produrrà true
+				// if the list is not void
 				if (appendList != null) {
+					/**
+					 * 
+					 * N.B: The result of alpha iterations will produce alpha * K nodes. These nodes
+					 * will be stored in appendList. If appendList contains something new, then the
+					 * addAll() will produce TRUE.
+					 * 
+					 */
 					somethingToMerge = kresult.addAll(appendList);
 				}
 			}
 
+			// Sort and prune to K the results
 			kresult = new LinkedHashSet<Peer>(getKOrdered(kresult));
 
 		} while (somethingToMerge);
 
-		// SERVE???
-		// kresult.addAll(alreadyVisited);
+		// Count the number of hops
+		this.hops.add(num_hops);
 
-		this.depth.add(tmp_depth);
-
+		// Return the best K results
 		return kresult.toArray(new Peer[kresult.size()]);
 	}
 
-//	private ArrayList<String> computeDistances() {
-//		ArrayList<String> ids = new ArrayList<String>(allPossibleIDs);
-//
-//		// HashMap<ID,XOR con this>
-//		HashMap<String, String> xorMap = new HashMap<String, String>();
-//
-//		// elimino me stesso dalla lista
-//		ids.remove(this.getID());
-//
-//		// creo la mappa chiave valore basata sullo xor tra (this) e la lista che arriva
-//		for (String x : ids) {
-//			BigInteger thisID =  new BigInteger(this.getID());
-//			BigInteger xID = new BigInteger(x);
-//			xorMap.put(x, thisID.xor(xID).toString());
-//		}
-//
-//		ids.sort(new Comparator<String>() {
-//
-//			@Override
-//			public int compare(String o1, String o2) {
-//				String val_o1 = xorMap.get(o1);
-//				String val_o2 = xorMap.get(o2);
-//				return val_o1.compareTo(val_o2);
-//			}
-//
-//		});
-//
-//		return ids;
-//	}
-
-	private ArrayList<Peer> getKOrdered(HashSet<Peer> kresult) {
-		ArrayList<Peer> arr = new ArrayList<Peer>(kresult);
+	/**
+	 * This function compute the best K Peers of the {@code input} set of peer.
+	 * 
+	 * 
+	 * @param input set of Peers
+	 * @return the best K Peers
+	 */
+	private ArrayList<Peer> getKOrdered(HashSet<Peer> input) {
+		ArrayList<Peer> arr = new ArrayList<Peer>(input);
 		HashMap<Peer, BigInteger> xorMap = new HashMap<Peer, BigInteger>();
 
-		// elimino me stesso dalla lista
+		// Remove myself from the list
 		arr.remove(this.peer);
 
-		// creo la mappa chiave valore basata sullo xor tra (this) e la lista che arriva
+		// Create the HashMap < given_ID , XOR > based on the XOR between (this)
+		// and the given ID
 		for (Peer px : arr) {
 			BigInteger thisID = new BigInteger(this.getID());
 			BigInteger pxID = new BigInteger(px.getID());
@@ -223,6 +305,7 @@ public class Node {
 			xorMap.put(px, thisID.xor(pxID));
 		}
 
+		// Sort them based on the XOR metric
 		arr.sort(new Comparator<Peer>() {
 
 			@Override
@@ -234,12 +317,19 @@ public class Node {
 
 		});
 
+		// Prune them to K results
 		if (arr.size() > Start.bucket_size) {
 			arr = (ArrayList<Peer>) arr.stream().limit(Start.bucket_size).collect(Collectors.toList());
 		}
 		return arr;
 	}
 
+	/**
+	 * Retrieves the alpha closest peer to (this).
+	 * 
+	 * @param alpha
+	 * @return
+	 */
 	private Peer[] getAlphaPeersFromDHT(int alpha) {
 		LinkedList<Peer> list = new LinkedList<Peer>();
 		int i = 0;
@@ -254,11 +344,19 @@ public class Node {
 		return list.toArray(new Peer[list.size()]);
 	}
 
+	/**
+	 * This function is part of the FIND_NODE_RPC functionalities described in the
+	 * paper. Basically retrieves the K closest Peers (to this) of a given ID.
+	 * 
+	 * @param ID
+	 * @return K closest Peers to the given ID
+	 */
 	public Peer[] findKClosest(String ID) {
 
 		int k = Start.bucket_size;
 		int log2;
 
+		// Compute in which bucket belongs that ID
 		BigInteger peerID = new BigInteger(ID);
 		log2 = (int) (Math.floor(Math.log(peerID.doubleValue()) / Math.log(2)));
 
@@ -269,9 +367,12 @@ public class Node {
 		int sizeAtLog = 0;
 		Peer[] ret = null;
 
+		// if the bucket of peerID is not void
 		if (this.DHT.bucket[log2] != null) {
+			// check how many peers this bucket contains
 			sizeAtLog = this.DHT.bucket[log2].size();
 		}
+
 		// if the bucket contains K elements return the entire bucket
 		if (sizeAtLog == k) {
 			ret = this.DHT.bucket[log2].toArray(new Peer[k]);
@@ -282,9 +383,9 @@ public class Node {
 			ret = getAllPeers();
 		}
 
-		// if there are more than K elements but the selected bucket does not have K
-		// elements
-		// then select K elements from the neighbours of the bucket at position log2
+		// if there are more than K elements but the selected bucket
+		// does not have K elements, then select K elements from the neighbours of the
+		// bucket at position log2
 		else if ((DHT.active_nodes > k) && (sizeAtLog < k)) {
 			ret = getNeighbourPeers(log2);
 		}
@@ -298,6 +399,12 @@ public class Node {
 		return list.toArray(new Peer[list.size()]);
 	}
 
+	/**
+	 * Retrieve K Peers going up and down with respect to the given position
+	 * 
+	 * @param bucket_position
+	 * @return K Peers
+	 */
 	private Peer[] getNeighbourPeers(int bucket_position) {
 		int k = Start.bucket_size;
 		HashSet<Peer> tmp = new HashSet<Peer>();
@@ -330,6 +437,11 @@ public class Node {
 		return lst;
 	}
 
+	/**
+	 * Retrieve an entire bucket
+	 * 
+	 * @return
+	 */
 	private Peer[] getAllPeers() {
 		HashSet<Peer> tmp = new HashSet<Peer>();
 
@@ -343,34 +455,54 @@ public class Node {
 		return lst;
 	}
 
-	private Peer connect(Kademlia kad) {
-		// Get the bootstrap node
-		Peer bootstrap = kad.getBootstrap(this);
-
-		if (bootstrap != null) {
-			this.insert(bootstrap);
-		}
-
-		return bootstrap;
-	}
-
-	public int getNumLookup() {
-		return this.real_lookup;
-	}
-
-	public double getAvgDepth() {
-		if (this.depth.size() > 0) {
-			return this.depth.stream().mapToDouble(x -> x).average().getAsDouble();
+	/**
+	 * Compute the average number of hops, based on the historical data
+	 * 
+	 * @return the average number of hops
+	 */
+	public double getAvgHops() {
+		if (this.hops.size() > 0) {
+			return this.hops.stream().mapToDouble(x -> x).average().getAsDouble();
 		} else {
 			return 0;
 		}
 
 	}
 
+	/**
+	 * This function will returns all the edges of this node. It is useful to create
+	 * the graphs.
+	 * 
+	 * @return a list of edges
+	 */
+	public LinkedList<String> getEdges() {
+		LinkedList<Peer> tmp = new LinkedList<Peer>();
+
+		for (int i = 0; i < Start.bit; i++) {
+			if (this.DHT.bucket[i] != null) {
+				tmp.addAll(this.DHT.bucket[i]);
+			}
+		}
+
+		LinkedList<String> result = new LinkedList<String>();
+
+		for (Peer x : tmp) {
+			result.add(this.getID() + "," + x.getID());
+		}
+
+		return result;
+	}
+
+	/**
+	 * @return the ID
+	 */
 	String getID() {
 		return peer.getID();
 	}
 
+	/**
+	 * @return the Peer part of this Node
+	 */
 	public Peer getPeer() {
 		return this.peer;
 	}
@@ -380,7 +512,11 @@ public class Node {
 		return this.peer.toString();
 	}
 
-	// insert peer into the DHT of node in the right position
+	/**
+	 * Insert {@code peer} into the DHT of the node in the right position
+	 * 
+	 * @param peer
+	 */
 	void insert(Peer peer) {
 		// Verify that I do not insert myself in my own DHT
 		if (this.getID().equals(peer.getID())) {
@@ -392,11 +528,22 @@ public class Node {
 		BigInteger nodeID = new BigInteger(this.getID());
 		BigInteger peerID = new BigInteger(peer.getID());
 		BigInteger xor = nodeID.xor(peerID);
+
 		log2 = (int) (Math.floor(Math.log(xor.doubleValue()) / Math.log(2)));
+
+		if (log2 < 1) {
+			log2 = 0;
+		}
 
 		this.DHT.put(peer, log2);
 	}
 
+	/**
+	 * Given a {@code list} of Peers, insert them into the DHT into the right
+	 * position
+	 * 
+	 * @param list
+	 */
 	private void insert(Peer[] list) {
 		for (Peer x : list) {
 			if (!this.getID().equals(x.getID())) {
@@ -405,25 +552,13 @@ public class Node {
 		}
 	}
 
-//	public static void computeAllIDS() {
-//		BigInteger bound = new BigInteger("2").pow(Start.bit);
-//
-//		BigInteger i = BigInteger.valueOf(0);
-//		while (i.compareTo(bound) < 0) {
-//			allPossibleIDs.add(i.toString());
-//			i = i.add(BigInteger.valueOf(1));
-//		}
-//	}
-
-	private BigInteger getRandomBigInteger(BigInteger upperlimit) {
-		Random rand = new Random();
-		BigInteger result;
-		do {
-			result = new BigInteger(upperlimit.bitLength(), rand);
-		} while (result.compareTo(upperlimit) >= 0);
-		return result;
-	}
-
+	/**
+	 * This class gives all the functionalities of a Routing Table as described into
+	 * the Kademlia paper.
+	 * 
+	 * @author Andrea Bruno
+	 *
+	 */
 	class RoutingTable {
 		private int bit = Start.bit;
 		private int bucket_size = Start.bucket_size;
@@ -432,16 +567,24 @@ public class Node {
 		private ArrayList<Peer>[] bucket = new ArrayList[bit];
 
 		private void put(Peer peer, int pos) {
+
+			// If the pointed bucket is void then create it
 			if (bucket[pos] == null) {
 				bucket[pos] = new ArrayList<Peer>();
 			}
 
+			// If there is no space and the node is not already in the Routing Table then
+			// remove the last and add the given node
 			if (bucket[pos].size() >= bucket_size) {
-				// remove last
-				bucket[pos].remove(bucket[pos].size() - 1);
-				bucket[pos].add(peer);
+				if (!bucket[pos].contains(peer)) {
+					bucket[pos].remove(bucket[pos].size() - 1);
+					bucket[pos].add(peer);
+					active_nodes++;
+				}
 			}
-			if (!bucket[pos].contains(peer)) {
+			// ELSE If the bucket does not contain the given peer,
+			// then add it to the Routing Table
+			else if (!bucket[pos].contains(peer)) {
 				bucket[pos].add(peer);
 				active_nodes++;
 			}

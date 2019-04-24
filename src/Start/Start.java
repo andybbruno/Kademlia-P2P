@@ -12,15 +12,10 @@ import Network.Node;
  *
  */
 public class Start {
-//	static int[] arr_bit = { 32, 64, 128, 160, 256, 512, 1024, 2048 };
-//	static int[] arr_nod = { 50, 100, 200, 500, 1000, 2000, 5000, 10000 };
-//	static int[] arr_buck = { 2, 3, 5, 8, 10, 13, 15, 20 };
+	static int[] arr_bit = { 32, 64, 128, 160, 192, 224, 256, 384, 512, 1024 };
+	static int[] arr_nod = { 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000 };
+	static int[] arr_buck = { 2, 5, 7, 10, 13, 15, 17, 20, 25, 30 };
 
-	static int[] arr_bit = { 160 };
-	static int[] arr_nod = { 1000 };
-	static int[] arr_buck = { 20 };
-
-	public static boolean SHA1 = false;
 	public static boolean refresh = false;
 	public static int bit = arr_bit[0];
 	public static int num_nodes;
@@ -30,15 +25,24 @@ public class Start {
 
 	public static void main(String[] args) {
 
+		// Data Structures for stats
 		LinkedList<String> results = new LinkedList<String>();
-		results.add(new String("#Nodes,#Bit,K,Time,Avg Lookups,Avg Depth"));
+		LinkedList<Double> hops = new LinkedList<Double>();
+
+		// First row of the results CSV file
+		results.add(new String("#Nodes,#Bit,K,Time,Avg Hops"));
 
 		long start = System.nanoTime();
 
+		// For each bit in arr_bit
 		for (int i = 0; i < arr_bit.length; i++) {
 			bit = arr_bit[i];
+
+			// For each num_nodes in arr_nod
 			for (int j = 0; j < arr_nod.length; j++) {
 				num_nodes = arr_nod[j];
+
+				// For each bucket_size in arr_buck
 				for (int k = 0; k < arr_buck.length; k++) {
 					bucket_size = arr_buck[k];
 
@@ -48,29 +52,27 @@ public class Start {
 					// Create the network
 					Kademlia kad = new Kademlia();
 
-					// Create the nodes
+					// Create a void list of nodes
 					LinkedList<Node> nodes = new LinkedList<Node>();
 
-					// Create the edges
+					// Create a void list of edges
 					HashSet<String> edges = new HashSet<String>();
 
 					long startTime = System.nanoTime();
 
+					// creates num_nodes nodes
 					for (int q = 0; q < num_nodes; q++) {
 						nodes.add(new Node(kad));
 					}
 
-					LinkedList<Double> depths = new LinkedList<Double>();
-					LinkedList<Integer> lookups = new LinkedList<Integer>();
-
 					for (int c = 0; c < num_nodes; c++) {
 						edges.addAll(nodes.get(c).getEdges());
-						depths.add(nodes.get(c).getAvgDepth());
-						lookups.add(nodes.get(c).getNumLookup());
+						hops.add(nodes.get(c).getAvgHops());
 					}
 
 					int num_edges = 0;
 
+					// Creates a file for each triple < N_Bit, Bucket_Size, Num_Nodes >
 					try (PrintWriter writer = new PrintWriter(new File(filename))) {
 
 						StringBuilder sb = new StringBuilder();
@@ -93,22 +95,22 @@ public class Start {
 					// get difference of two nanoTime values
 					long timeElapsed = (endTime - startTime) / 1000000;
 
-					Double avg_depths = depths.stream().mapToDouble(x -> x).average().getAsDouble();
-					Double avg_lookups = lookups.stream().mapToDouble(x -> x).average().getAsDouble();
+					// Compute the average number of hops
+					Double avg_hops = hops.stream().mapToDouble(x -> x).average().getAsDouble();
 
-					String res = num_nodes + "," + bit + "," + bucket_size + "," + timeElapsed + "," + avg_lookups + ","
-							+ avg_depths;
+					String res = num_nodes + "," + bit + "," + bucket_size + "," + timeElapsed + "," + avg_hops;
 
 					results.add(res);
 
 					System.out.println("Execution time in milliseconds : " + timeElapsed);
-					System.out.println("Average lookup calls : " + avg_lookups);
-					System.out.println("Average lookup depth : " + avg_depths);
+					System.out.println("Average lookup depth : " + avg_hops);
 					System.out.println(num_edges + " edges");
 				}
 			}
 		}
 
+		
+		// Create a CSV file containg the overall statistics
 		try (PrintWriter writer = new PrintWriter(new File("ANALYSIS/results.csv"))) {
 
 			StringBuilder sb = new StringBuilder();
