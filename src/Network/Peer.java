@@ -6,7 +6,7 @@ import Utility.Utility;
 
 /**
  * The Peer class consists of tree private fields that simulates what in the
- * original paper is called <ID,IP,Port> triple. Basic functionality has been
+ * original paper is called [ID,IP,Port] triple. Basic functionality has been
  * developed such as {@code getID()} and {@code toString()}. There is a private
  * static HashSet that guarantees no duplicates ID.
  * 

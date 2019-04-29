@@ -4,3 +4,8 @@
 *.DS_Store
 .DS_Store
 *.xlsx
+ANALYSIS/.vscode/settings.json
+ANALYSIS/.vscode/launch.json
+.vscode/.ropeproject/objectdb
+.vscode/.ropeproject/config.py
+.DS_Store

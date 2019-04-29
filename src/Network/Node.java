@@ -15,7 +15,7 @@ import Start.Start;
 
 /**
  * In this implementation a Node is composed by an object Peer (containing
- * <ID,IP,Port>) and by an object Rounting Table. This way, the two logics are
+ * [ID,IP,Port]) and by an object Rounting Table. This way, the two logics are
  * placed in different classes.
  * 
  * @author Andrea Bruno
@@ -345,61 +345,6 @@ public class Node {
 	}
 
 	/**
-	 * This function is part of the FIND_NODE_RPC functionalities described in the
-	 * paper. Basically retrieves the K closest Peers (to this) of a given ID.
-	 * 
-	 * @param ID
-	 * @return K closest Peers to the given ID
-	 */
-	public Peer[] findKClosest(String ID) {
-
-		int k = Start.bucket_size;
-		int log2;
-
-		// Compute in which bucket belongs that ID
-		BigInteger peerID = new BigInteger(ID);
-		log2 = (int) (Math.floor(Math.log(peerID.doubleValue()) / Math.log(2)));
-
-		if (log2 < 1) {
-			log2 = 0;
-		}
-
-		int sizeAtLog = 0;
-		Peer[] ret = null;
-
-		// if the bucket of peerID is not void
-		if (this.DHT.bucket[log2] != null) {
-			// check how many peers this bucket contains
-			sizeAtLog = this.DHT.bucket[log2].size();
-		}
-
-		// if the bucket contains K elements return the entire bucket
-		if (sizeAtLog == k) {
-			ret = this.DHT.bucket[log2].toArray(new Peer[k]);
-		}
-
-		// if the DHT contains less(or =) elements than K, then return all nodes it owns
-		else if (DHT.active_nodes <= k) {
-			ret = getAllPeers();
-		}
-
-		// if there are more than K elements but the selected bucket
-		// does not have K elements, then select K elements from the neighbours of the
-		// bucket at position log2
-		else if ((DHT.active_nodes > k) && (sizeAtLog < k)) {
-			ret = getNeighbourPeers(log2);
-		}
-
-		// delete the caller of the procedure if for some reasons is in the list
-		HashSet<Peer> list = new HashSet<Peer>(Arrays.asList(ret));
-		if (list.contains(ID)) {
-			list.remove(ID);
-		}
-
-		return list.toArray(new Peer[list.size()]);
-	}
-
-	/**
 	 * Retrieve K Peers going up and down with respect to the given position
 	 * 
 	 * @param bucket_position
@@ -456,6 +401,61 @@ public class Node {
 	}
 
 	/**
+	 * This function is part of the FIND_NODE_RPC functionalities described in the
+	 * paper. Basically retrieves the K closest Peers (to this) of a given ID.
+	 * 
+	 * @param ID
+	 * @return K closest Peers to the given ID
+	 */
+	public Peer[] findKClosest(String ID) {
+
+		int k = Start.bucket_size;
+		int log2;
+
+		// Compute in which bucket belongs that ID
+		BigInteger peerID = new BigInteger(ID);
+		log2 = (int) (Math.floor(Math.log(peerID.doubleValue()) / Math.log(2)));
+
+		if (log2 < 1) {
+			log2 = 0;
+		}
+
+		int sizeAtLog = 0;
+		Peer[] ret = null;
+
+		// if the bucket of peerID is not void
+		if (this.DHT.bucket[log2] != null) {
+			// check how many peers this bucket contains
+			sizeAtLog = this.DHT.bucket[log2].size();
+		}
+
+		// if the bucket contains K elements return the entire bucket
+		if (sizeAtLog == k) {
+			ret = this.DHT.bucket[log2].toArray(new Peer[k]);
+		}
+
+		// if the DHT contains less(or =) elements than K, then return all nodes it owns
+		else if (DHT.active_nodes <= k) {
+			ret = getAllPeers();
+		}
+
+		// if there are more than K elements but the selected bucket
+		// does not have K elements, then select K elements from the neighbours of the
+		// bucket at position log2
+		else if ((DHT.active_nodes > k) && (sizeAtLog < k)) {
+			ret = getNeighbourPeers(log2);
+		}
+
+		// delete the caller of the procedure if for some reasons is in the list
+		HashSet<Peer> list = new HashSet<Peer>(Arrays.asList(ret));
+		if (list.contains(ID)) {
+			list.remove(ID);
+		}
+
+		return list.toArray(new Peer[list.size()]);
+	}
+
+	/**
 	 * Compute the average number of hops, based on the historical data
 	 * 
 	 * @return the average number of hops
@@ -494,13 +494,6 @@ public class Node {
 	}
 
 	/**
-	 * @return the ID
-	 */
-	String getID() {
-		return peer.getID();
-	}
-
-	/**
 	 * @return the Peer part of this Node
 	 */
 	public Peer getPeer() {
@@ -510,6 +503,13 @@ public class Node {
 	@Override
 	public String toString() {
 		return this.peer.toString();
+	}
+
+	/**
+	 * @return the ID
+	 */
+	String getID() {
+		return peer.getID();
 	}
 
 	/**

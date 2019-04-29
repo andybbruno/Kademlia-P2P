@@ -8,13 +8,16 @@ import Network.Kademlia;
 import Network.Node;
 
 /**
+ * This class contains all the variables and all the procedures of the
+ * experiments
+ * 
  * @author Andrea Bruno
  *
  */
 public class Start {
-	static int[] arr_bit = { 32, 64, 128, 160, 192, 224, 256, 384, 512, 1024 };
-	static int[] arr_nod = { 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000 };
-	static int[] arr_buck = { 2, 5, 7, 10, 13, 15, 17, 20, 25, 30 };
+	static int[] arr_bit = { 20, 40, 60, 80, 100, 120, 140, 160 };
+	static int[] arr_nod = { 625, 1250, 1875, 2500, 3125, 3750, 4375, 5000 };
+	static int[] arr_buck = { 2, 5, 7, 10, 12, 15, 17, 20 };
 
 	public static boolean refresh = false;
 	public static int bit = arr_bit[0];
@@ -104,12 +107,16 @@ public class Start {
 
 					System.out.println("Execution time in milliseconds : " + timeElapsed);
 					System.out.println("Average lookup depth : " + avg_hops);
-					System.out.println(num_edges + " edges");
+
+					if (num_edges > 100000) {
+						System.err.println(num_edges + " edges");
+					} else {
+						System.out.println(num_edges + " edges");
+					}
 				}
 			}
 		}
 
-		
 		// Create a CSV file containg the overall statistics
 		try (PrintWriter writer = new PrintWriter(new File("ANALYSIS/results.csv"))) {
 
