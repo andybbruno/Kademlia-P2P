@@ -60,10 +60,12 @@ public class Node {
 				// called "Bucket Refreshing". This procedure, for each bucket, will perform a
 				// lookup of an ID that belongs to that bucket. This way after m-bit
 				// lookups, all the buckets should be filled (partially).
+				// By default it is never executed because it too much expensive
+				// for our purposes.
 				refreshBuckets();
 			} else {
 				// Simulates a lookup similar to Ethereum.
-				// That is, a lookup of myself, and afterwards, a lookup of a random address
+				// That is, a lookup of myself, and afterwards, a lookup of a random peer
 				// with ID smaller (XOR) than the bootstrap node.
 				// https://github.com/ethereum/wiki/wiki/Kademlia-Peer-Selection#lookup
 				ethereumLookup();
